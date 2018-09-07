@@ -7,6 +7,7 @@ TARGET_BOARD_PLATFORM := msm8996
 TARGET_BOOTLOADER_BOARD_NAME := marlin
 TARGET_BOARD_INFO_FILE := device/google/marlin/marlin/board-info.txt
 
+ENABLE_SCHEDBOOST := true
 TARGET_USES_INTERACTION_BOOST := true
 
 TARGET_USES_AOSP := true
@@ -14,22 +15,21 @@ TARGET_ARCH := arm64
 TARGET_ARCH_VARIANT := armv8-a
 TARGET_CPU_ABI := arm64-v8a
 TARGET_CPU_ABI2 :=
-TARGET_CPU_VARIANT := kryo
+#TODO: add kryo support? TARGET_CPU_VARIANT := kryo
+TARGET_CPU_VARIANT := generic
 
 TARGET_2ND_ARCH := arm
-TARGET_2ND_ARCH_VARIANT := armv8-a
+TARGET_2ND_ARCH_VARIANT := armv7-a-neon
 TARGET_2ND_CPU_ABI := armeabi-v7a
 TARGET_2ND_CPU_ABI2 := armeabi
-TARGET_2ND_CPU_VARIANT := kryo
+TARGET_2ND_CPU_VARIANT := krait
+
+ENABLE_CPUSETS := true
 
 TARGET_NO_BOOTLOADER := true
 TARGET_NO_KERNEL := false
 TARGET_NO_RECOVERY := true
-ifneq ($(findstring aosp_marlin_svelte, $(TARGET_PRODUCT)),)
-TARGET_RECOVERY_FSTAB := device/google/marlin/fstab.aosp_svelte
-else
 TARGET_RECOVERY_FSTAB := device/google/marlin/fstab.common
-endif
 BOARD_USES_RECOVERY_AS_BOOT := true
 BOARD_BUILD_SYSTEM_ROOT_IMAGE := true
 BOOTLOADER_GCC_VERSION := arm-eabi-4.8
@@ -39,7 +39,6 @@ BOOTLOADER_PLATFORM := msm8996
 TARGET_USES_OVERLAY := true
 TARGET_FORCE_HWC_FOR_VIRTUAL_DISPLAYS := true
 MAX_VIRTUAL_DISPLAY_DIMENSION := 4096
-TARGET_USES_GRALLOC1 := true
 TARGET_USES_HWC2 := true
 VSYNC_EVENT_PHASE_OFFSET_NS := 2000000
 SF_VSYNC_EVENT_PHASE_OFFSET_NS := 6000000
@@ -54,14 +53,13 @@ TARGET_USES_QCOM_MM_AUDIO := true
 
 -include $(QCPATH)/common/msm8996/BoardConfigVendor.mk
 
-TARGET_AUX_OS_VARIANT_LIST := marlin
+BOARD_HAL_STATIC_LIBRARIES := libdumpstate.marlin
 
 # Some framework code requires this to enable BT
 BOARD_HAVE_BLUETOOTH := true
 BOARD_USES_WIPOWER := true
 BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := device/google/marlin/bluetooth
 BOARD_HAVE_BLUETOOTH_QCOM := true
-BOARD_USES_SDM845_BLUETOOTH_HAL := true
 BOARD_HAS_QCA_BT_ROME := true
 WCNSS_FILTER_USES_SIBS := true
 
@@ -83,12 +81,9 @@ OVERRIDE_RS_DRIVER:= libRSDriver_adreno.so
 TARGET_USERIMAGES_USE_EXT4 := true
 BOARD_BOOTIMAGE_PARTITION_SIZE := 0x02000000
 BOARD_SYSTEMIMAGE_PARTITION_SIZE := 2147483648
-BOARD_SYSTEMIMAGE_EXTFS_INODE_COUNT := 4096
-ifneq ($(findstring aosp_marlin_svelte, $(TARGET_PRODUCT)),)
-BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := squashfs
-BOARD_SYSTEMIMAGE_JOURNAL_SIZE := 0
-BOARD_SYSTEMIMAGE_SQUASHFS_COMPRESSOR := lz4
-endif
+#BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := squashfs
+#BOARD_SYSTEMIMAGE_JOURNAL_SIZE := 0
+#BOARD_SYSTEMIMAGE_SQUASHFS_COMPRESSOR := lz4
 BOARD_USERDATAIMAGE_PARTITION_SIZE := 10737418240
 BOARD_PERSISTIMAGE_PARTITION_SIZE := 33554432
 BOARD_PERSISTIMAGE_FILE_SYSTEM_TYPE := ext4
@@ -100,30 +95,23 @@ ifneq ($(TARGET_USES_AOSP),true)
 TARGET_USES_QCOM_BSP := true
 endif
 
-BOARD_KERNEL_CMDLINE := console=ttyHSL0,115200,n8 androidboot.console=ttyHSL0 androidboot.hardware=marlin user_debug=31 ehci-hcd.park=3 lpm_levels.sleep_disabled=1 cma=32M@0-0xffffffff loop.max_part=7
+BOARD_KERNEL_CMDLINE := console=ttyHSL0,115200,n8 androidboot.console=ttyHSL0 androidboot.hardware=marlin user_debug=31 ehci-hcd.park=3 lpm_levels.sleep_disabled=1 cma=32M@0-0xffffffff
 
-BOARD_ROOT_EXTRA_FOLDERS := firmware firmware/radio persist
+BOARD_ROOT_EXTRA_FOLDERS := bt_firmware firmware firmware/radio persist
 BOARD_ROOT_EXTRA_SYMLINKS := /vendor/lib/dsp:/dsp
 
 BOARD_SEPOLICY_DIRS += device/google/marlin/sepolicy
 ifneq ($(filter marlin marlinf, $(TARGET_PRODUCT)),)
 BOARD_SEPOLICY_DIRS += device/google/marlin/sepolicy/verizon
 endif
-BOARD_PLAT_PRIVATE_SEPOLICY_DIR := device/google/marlin/sepolicy/private
+BOARD_SECCOMP_POLICY += device/google/marlin/seccomp
 
 BOARD_EGL_CFG := device/google/marlin/egl.cfg
 
 BOARD_KERNEL_BASE        := 0x80000000
 BOARD_KERNEL_PAGESIZE    := 4096
-ifneq ($(filter marlin_kasan, $(TARGET_PRODUCT)),)
-BOARD_KERNEL_OFFSET      := 0x80000
-BOARD_KERNEL_TAGS_OFFSET := 0x02500000
-BOARD_RAMDISK_OFFSET     := 0x02700000
-BOARD_MKBOOTIMG_ARGS     := --kernel_offset $(BOARD_KERNEL_OFFSET) --ramdisk_offset $(BOARD_RAMDISK_OFFSET) --tags_offset $(BOARD_KERNEL_TAGS_OFFSET)
-else
 BOARD_KERNEL_TAGS_OFFSET := 0x02000000
 BOARD_RAMDISK_OFFSET     := 0x02200000
-endif
 
 TARGET_KERNEL_ARCH := arm64
 TARGET_KERNEL_HEADER_ARCH := arm64
@@ -156,6 +144,18 @@ TARGET_PD_SERVICE_ENABLED := true
 BOARD_QTI_CAMERA_32BIT_ONLY := true
 TARGET_BOOTIMG_SIGNED := true
 
+# Enable dex pre-opt to speed up initial boot
+ifeq ($(HOST_OS),linux)
+  ifeq ($(WITH_DEXPREOPT),)
+    WITH_DEXPREOPT := true
+    WITH_DEXPREOPT_PIC := true
+    ifneq ($(TARGET_BUILD_VARIANT),user)
+      # Retain classes.dex in APK's for non-user builds
+      DEX_PREOPT_DEFAULT := nostripping
+    endif
+  endif
+endif
+
 # HTC_SENSOR_HUB
 LIBHTC_SENSORHUB_PROJECT := g_project
 
@@ -172,6 +172,8 @@ PROTOBUF_SUPPORTED := false
 
 #Add NON-HLOS files for ota upgrade
 ADD_RADIO_FILES := true
+TARGET_RECOVERY_UPDATER_LIBS := librecovery_updater_msm
+#TARGET_RECOVERY_UI_LIB := librecovery_ui_msm
 TARGET_RECOVERY_UI_LIB := librecovery_ui_nanohub
 
 #Add support for firmare upgrade on 8996
@@ -179,6 +181,9 @@ HAVE_SYNAPTICS_DSX_FW_UPGRADE := true
 
 # Enable MDTP (Mobile Device Theft Protection)
 TARGET_USE_MDTP := true
+
+# Use prebuilt APN lib from Verizon Wireless
+TARGET_USE_VERIZON_APN_LIB_PREBUILT := true
 
 TARGET_BOARD_KERNEL_HEADERS := device/google/marlin/kernel-headers
 
@@ -190,23 +195,4 @@ BOARD_USES_SYSTEM_OTHER_ODEX := true
 TARGET_COPY_OUT_VENDOR := vendor
 
 #NFC
-NXP_CHIP_TYPE := 3
-
-# Testing related defines
-BOARD_PERFSETUP_SCRIPT := platform_testing/scripts/perf-setup/sailin-setup.sh
-
-# Use mke2fs to create ext4 images
-TARGET_USES_MKE2FS := true
-
-BOARD_PROPERTY_OVERRIDES_SPLIT_ENABLED := true
-
-ifneq ($(findstring marlin_svelte, $(TARGET_PRODUCT)),)
-MALLOC_SVELTE := true
-endif
-
-DEVICE_MANIFEST_FILE := device/google/marlin/manifest.xml
-DEVICE_MATRIX_FILE   := device/google/marlin/compatibility_matrix.xml
-DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE := device/google/marlin/device_framework_matrix.xml
-
-# Exclude serif fonts for saving system.img size.
-EXCLUDE_SERIF_FONTS := true
+NXP_CHIP_TYPE := PN551

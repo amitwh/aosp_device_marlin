@@ -1,4 +1,4 @@
-#!/vendor/bin/sh
+#!/system/bin/sh
 
 #
 # Copy qcril.db if needed for RIL

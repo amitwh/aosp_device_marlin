@@ -33,8 +33,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 # Audio
 PRODUCT_PROPERTY_OVERRIDES += \
-    ro.config.vc_call_vol_steps=7 \
-    fmas.hdph_sgain=0
+    ro.config.vc_call_vol_steps=7
 
 # HWUI cache sizes
 PRODUCT_PROPERTY_OVERRIDES += \
@@ -43,35 +42,37 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.hwui.path_cache_size=16
 
 PRODUCT_COPY_FILES += \
-    device/google/marlin/fstab.common:$(TARGET_COPY_OUT_VENDOR)/etc/fstab.sailfish \
-    device/google/marlin/audio_platform_info_tasha_sailfish.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_platform_info_tasha.xml \
-    device/google/marlin/init.recovery.common.rc:recovery/root/init.recovery.sailfish.rc
+    device/google/marlin/init.common.rc:root/init.sailfish.rc \
+    device/google/marlin/init.common.usb.rc:root/init.sailfish.usb.rc \
+    device/google/marlin/fstab.common:root/fstab.sailfish \
+    device/google/marlin/ueventd.common.rc:root/ueventd.sailfish.rc \
+    device/google/marlin/init.recovery.common.rc:root/init.recovery.sailfish.rc
+
+# Sensor hub init script
+PRODUCT_COPY_FILES += \
+    device/google/marlin/init.common.nanohub.rc:root/init.sailfish.nanohub.rc
 
 # Sensor packages
 PRODUCT_PACKAGES += \
     sensors.sailfish \
     activity_recognition.sailfish
 
+# NFC packages
+PRODUCT_PACKAGES += \
+    nfc_nci.sailfish
+
 PRODUCT_COPY_FILES += \
-    device/google/marlin/nfc/libnfc-nxp.sailfish.conf:$(TARGET_COPY_OUT_VENDOR)/etc/libnfc-nxp.conf
+    device/google/marlin/nfc/libnfc-nxp.sailfish.conf:system/etc/libnfc-nxp.conf
 
 # Led packages
 PRODUCT_PACKAGES += \
     lights.sailfish
 
+# Thermal packages
+PRODUCT_PACKAGES += \
+    thermal.sailfish
+
 # VR packages
 PRODUCT_PACKAGES += \
     vr.sailfish
 
-# Fingerprint
-PRODUCT_PACKAGES += \
-    fingerprint.sailfish
-
-$(call add-product-sanitizer-module-config,wpa_supplicant,never)
-$(call add-product-sanitizer-module-config,toybox_vendor,never)
-$(call add-product-sanitizer-module-config,thermal-engine,never)
-$(call add-product-sanitizer-module-config,netmgrd,never)
-$(call add-product-sanitizer-module-config,mm-camera,never)
-$(call add-product-sanitizer-module-config,myftm,never)
-$(call add-product-sanitizer-module-config,libqcril,never)
-$(call add-product-sanitizer-module-config,hostapd,never)
